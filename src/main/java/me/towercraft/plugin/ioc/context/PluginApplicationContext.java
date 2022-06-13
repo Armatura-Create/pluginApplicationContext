@@ -12,6 +12,8 @@ import me.towercraft.plugin.ioc.factory.DefaultBeanFactory;
 import me.towercraft.plugin.ioc.utils.PackageScanner;
 
 import java.beans.Introspector;
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -21,23 +23,22 @@ public class PluginApplicationContext implements ApplicationContext {
     private BeanDefinitionRegistrar beanDefinitionRegistrar;
     private BeanFactory beanFactory;
 
-    public PluginApplicationContext(Class<?> mainClass) {
+    public PluginApplicationContext(Object plugin) {
         PackageScanner packageScanner = new PackageScanner();
-        String packageName = mainClass.getPackageName();
+        String packageName = plugin.getClass().getPackage().getName();
 
-        beanDefinitionReader = new CompositeBeanDefinitionReader(
-                List.of(
-                        new AnnotationConfigurationBeanDefinitionReader(packageScanner, packageName),
-                        new AnnotationBasedBeanDefinitionReader(
-                                List.of(
-                                        Component.class,
-                                        Configuration.class
-                                ),
-                                packageScanner, packageName)
-                )
-        );
+        List<BeanDefinitionReader> readers = new ArrayList<>();
+        readers.add(new AnnotationConfigurationBeanDefinitionReader(packageScanner, packageName));
 
-        refresh();
+        List<Class<? extends Annotation>> annotations = new ArrayList<>();
+        annotations.add(Configuration.class);
+        annotations.add(Component.class);
+
+        readers.add(new AnnotationBasedBeanDefinitionReader(annotations, packageScanner, packageName));
+
+        beanDefinitionReader = new CompositeBeanDefinitionReader(readers);
+
+        refresh(plugin);
     }
 
     @Override
@@ -51,18 +52,24 @@ public class PluginApplicationContext implements ApplicationContext {
     }
 
     @Override
+    public void invokeDestroy() {
+        beanFactory.invokeDestroy();
+    }
+
+    @Override
     public Object getBean(String beanName) {
         return beanFactory.getBean(beanName);
     }
 
     @Override
     public void registerBean(String beanName, Object bean) {
-        beanDefinitionRegistrar.registerBeanDefinition(new CustomBeanDefinition(bean.getClass()));
-        beanFactory.registerBean(beanName, bean);
+        BeanDefinition beanDefinition = new CustomBeanDefinition(bean.getClass());
+        beanDefinitionRegistrar.registerBeanDefinition(beanDefinition);
+        beanFactory.registerBean(beanName == null ? beanDefinition.getName() : beanName, bean);
     }
 
     @Override
-    public void refresh() {
+    public void refresh(Object plugin) {
         beanDefinitionRegistrar = new DefaultBeanDefinitionRegistrar();
         Set<BeanDefinition> beanDefinitions = beanDefinitionReader.getBeanDefinitions();
 
@@ -70,6 +77,8 @@ public class PluginApplicationContext implements ApplicationContext {
                 bd -> beanDefinitionRegistrar.registerBeanDefinition(bd)
         );
         beanFactory = new DefaultBeanFactory(beanDefinitionRegistrar);
+
+        registerBean(null, plugin);
 
         registerBean(Introspector.decapitalize(this.getClass().getSimpleName()), this);
 

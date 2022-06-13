@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import me.towercraft.plugin.ioc.annotations.Autowire;
 import me.towercraft.plugin.ioc.annotations.PostConstruct;
+import me.towercraft.plugin.ioc.annotations.PreDestroy;
 import me.towercraft.plugin.ioc.definition.BeanDefinition;
 import me.towercraft.plugin.ioc.definition.registry.BeanDefinitionRegistrar;
 import me.towercraft.plugin.ioc.exceptions.MultiplyBeanException;
@@ -39,6 +40,25 @@ public class DefaultBeanFactory implements BeanFactory {
                 .map(this::getBean)
                 .map(bean -> (T) bean)
                 .collect(Collectors.toSet());
+    }
+
+    @Override
+    public void invokeDestroy() {
+        Set<Object> collect = new HashSet<>(beans.values());
+
+        for (Object o : collect) {
+            Method[] declaredMethods = o.getClass().getDeclaredMethods();
+            for (Method declaredMethod : declaredMethods) {
+                if (Arrays.stream(declaredMethod.getAnnotations())
+                        .anyMatch(annotation -> annotation.annotationType().isAssignableFrom(PreDestroy.class)))
+                declaredMethod.setAccessible(true);
+                try {
+                    declaredMethod.invoke(resolveArguments(declaredMethod.getParameters()));
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
     }
 
     @Override
