@@ -13,7 +13,7 @@ import java.util.Set;
 
 public class AutowireAnnotationBeanPostProcessor implements BeanPostProcessor {
     @Override
-    public Object postProcessorBeforeInitialisation(Object bean, ApplicationContext context) {
+    public Object postProcessorBeforeInitialisation(String beanName, Object bean, ApplicationContext context) {
 
         Class<?> clazz = bean.getClass();
         for (Field declaredField : clazz.getDeclaredFields()) {
@@ -45,7 +45,7 @@ public class AutowireAnnotationBeanPostProcessor implements BeanPostProcessor {
     }
 
     @Override
-    public Object postProcessorAfterInitialisation(Object bean, ApplicationContext context) {
+    public Object postProcessorAfterInitialisation(String beanName, Object bean, ApplicationContext context) {
         return bean;
     }
 }

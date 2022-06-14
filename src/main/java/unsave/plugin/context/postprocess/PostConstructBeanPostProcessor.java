@@ -3,59 +3,41 @@ package unsave.plugin.context.postprocess;
 import lombok.SneakyThrows;
 import unsave.plugin.context.annotations.PostConstruct;
 import unsave.plugin.context.context.ApplicationContext;
+import unsave.plugin.context.exceptions.MultiplyAnnotationTypeException;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class PostConstructBeanPostProcessor implements BeanPostProcessor {
+
+    private final Map<String, Method> classes = new ConcurrentHashMap<>();
+
     @Override
-    public Object postProcessorBeforeInitialisation(Object bean, ApplicationContext context) {
+    public Object postProcessorBeforeInitialisation(String beanName, Object bean, ApplicationContext context) {
+        Class<?> aClass = bean.getClass();
+
+        List<Method> methods = Arrays.stream(aClass.getDeclaredMethods())
+                .filter(m -> m.isAnnotationPresent(PostConstruct.class))
+                .collect(Collectors.toList());
+
+        if (methods.size() > 1)
+            throw new RuntimeException(new MultiplyAnnotationTypeException(PostConstruct.class.getSimpleName()));
+
+        if (methods.size() == 1)
+            classes.put(beanName, methods.get(0));
         return bean;
     }
 
     @Override
     @SneakyThrows
-    public Object postProcessorAfterInitialisation(Object bean, ApplicationContext context) {
+    public Object postProcessorAfterInitialisation(String beanName, Object bean, ApplicationContext context) {
 
-        Method[] declaredMethods = bean.getClass().getDeclaredMethods();
-        Method method = null;
-
-        for (Method declaredMethod : declaredMethods) {
-            for (Annotation annotation : declaredMethod.getAnnotations()) {
-                if (annotation.annotationType().isAssignableFrom(PostConstruct.class))
-                    method = declaredMethod;
-            }
-        }
-
-        if (method != null) {
-            try {
-                method.setAccessible(true);
-
-                Parameter[] parameters = method.getParameters();
-
-                Object[] values = new Object[parameters.length];
-                for (int i = 0; i < parameters.length; i++) {
-                    if (parameters[i].getType().isAssignableFrom(List.class)) {
-                        Type type = ((ParameterizedType) parameters[i].getParameterizedType()).getActualTypeArguments()[0];
-                        Class<?> aClass = Class.forName(type.getTypeName());
-                        return new ArrayList<>(context.getBeans(aClass));
-                    } else if (parameters[i].getType().isAssignableFrom(Set.class)) {
-                        Type type = ((ParameterizedType) parameters[i].getParameterizedType()).getActualTypeArguments()[0];
-                        Class<?> aClass = Class.forName(type.getTypeName());
-                        return new HashSet<>(context.getBeans(aClass));
-                    } else {
-                        values[i] = context.getBean(parameters[i].getType());
-                    }
-                }
-
-                method.invoke(bean, values);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new RuntimeException(e);
-            }
+        if (classes.containsKey(beanName)) {
+            Method method = classes.get(beanName);
+            method.setAccessible(true);
+            method.invoke(bean);
         }
 
         return bean;

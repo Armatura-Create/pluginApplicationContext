@@ -114,11 +114,11 @@ public class DefaultBeanFactory implements BeanFactory {
             ApplicationContext context = getBean(ApplicationContext.class);
 
             for (BeanPostProcessor beanPostProcessor : beanPostProcessors) {
-                bean = beanPostProcessor.postProcessorBeforeInitialisation(bean, context);
+                bean = beanPostProcessor.postProcessorBeforeInitialisation(beanDefinition.getName(), bean, context);
             }
 
             for (BeanPostProcessor beanPostProcessor : beanPostProcessors) {
-                bean = beanPostProcessor.postProcessorAfterInitialisation(bean, context);
+                bean = beanPostProcessor.postProcessorAfterInitialisation(beanDefinition.getName(), bean, context);
             }
         }
 
@@ -163,9 +163,7 @@ public class DefaultBeanFactory implements BeanFactory {
         Object[] values = resolveArguments(constructor.getParameters());
 
         try {
-            Object bean = constructor.newInstance(values);
-
-            return bean;
+            return constructor.newInstance(values);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
