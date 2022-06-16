@@ -1,7 +1,6 @@
 package unsave.plugin.context.factory;
 
 import lombok.SneakyThrows;
-import unsave.plugin.context.annotations.PostConstruct;
 import unsave.plugin.context.annotations.PreDestroy;
 import unsave.plugin.context.context.ApplicationContext;
 import unsave.plugin.context.definition.BeanDefinition;
@@ -13,7 +12,6 @@ import unsave.plugin.context.exceptions.NotFoundBeanDefinitionException;
 import unsave.plugin.context.exceptions.WrongQualifierValueException;
 import unsave.plugin.context.postprocess.BeanPostProcessor;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,7 +27,7 @@ public class DefaultBeanFactory implements BeanFactory {
         this.beanDefinitionRegistrar = beanDefinitionRegistrar;
         BeanDefinition beanDefinition = new CustomBeanDefinition(context.getClass());
         this.beanDefinitionRegistrar.registerBeanDefinition(beanDefinition);
-        this.beans.put("context", context);
+        this.beans.put(beanDefinition.getName(), context);
     }
 
     @Override
@@ -48,26 +46,6 @@ public class DefaultBeanFactory implements BeanFactory {
                 .map(this::getBean)
                 .map(bean -> (T) bean)
                 .collect(Collectors.toSet());
-    }
-
-    @Override
-    public void invokeDestroy() {
-        Set<Object> collect = new HashSet<>(beans.values());
-
-        for (Object o : collect) {
-            Method[] declaredMethods = o.getClass().getDeclaredMethods();
-            for (Method declaredMethod : declaredMethods) {
-                if (Arrays.stream(declaredMethod.getAnnotations())
-                        .anyMatch(annotation -> annotation.annotationType().isAssignableFrom(PreDestroy.class))) {
-                    declaredMethod.setAccessible(true);
-                    try {
-                        declaredMethod.invoke(resolveArguments(declaredMethod.getParameters()));
-                    } catch (IllegalAccessException | InvocationTargetException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }
-        }
     }
 
     @Override
@@ -97,11 +75,6 @@ public class DefaultBeanFactory implements BeanFactory {
         }
 
         beans.put(beanName, bean);
-    }
-
-    @Override
-    public BeanFactory getBeanFactory() {
-        return this;
     }
 
     private Object createBean(BeanDefinition beanDefinition) {

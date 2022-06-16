@@ -25,8 +25,11 @@ public class PostConstructBeanPostProcessor implements BeanPostProcessor {
         if (methods.size() > 1)
             throw new RuntimeException(new MultiplyAnnotationTypeException(PostConstruct.class.getSimpleName()));
 
-        if (methods.size() == 1)
+        if (methods.size() == 1) {
+            if (methods.get(0).getParameterCount() != 0)
+                throw new RuntimeException("Method PostConstruct must not have parameters [" + beanName.getClass().getSimpleName() + "]");
             classes.put(beanName, methods.get(0));
+        }
         return bean;
     }
 
