@@ -63,7 +63,8 @@ public class DefaultBeanFactory implements BeanFactory {
 
         Object bean = createBean(beanDefinition);
 
-        beans.put(beanName, bean);
+        if (bean != null)
+            beans.put(beanName, bean);
 
         return bean;
     }
@@ -81,6 +82,9 @@ public class DefaultBeanFactory implements BeanFactory {
         Object bean = beanDefinition.getFactoryMethod() == null ?
                 createBeanByConstructor(beanDefinition) :
                 createBeanByFactoryMethod(beanDefinition);
+
+        if (bean == null)
+            return null;
 
         if (!BeanPostProcessor.class.isAssignableFrom(beanDefinition.getBeanClass())) {
             List<BeanPostProcessor> beanPostProcessors = getBeanPostProcessor();
@@ -127,9 +131,10 @@ public class DefaultBeanFactory implements BeanFactory {
         Constructor<?>[] constructors = beanDefinition.getBeanClass().getConstructors();
 
         if (constructors.length != 1) {
-            throw new RuntimeException(
-                    new MultiplyConstructorException("Bean must only one public constructor [" + beanDefinition.getBeanClass() + "]")
-            );
+//            throw new RuntimeException(
+//                    new MultiplyConstructorException("Bean must only one public constructor [" + beanDefinition.getBeanClass() + "]")
+//            );
+            return null;
         }
 
         Constructor<?> constructor = constructors[0];

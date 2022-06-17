@@ -6,10 +6,7 @@ import unsave.plugin.context.context.ApplicationContext;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class AutowireAnnotationBeanPostProcessor implements BeanPostProcessor {
     @Override
@@ -22,6 +19,7 @@ public class AutowireAnnotationBeanPostProcessor implements BeanPostProcessor {
 
             try {
                 Object value;
+
                 if (declaredField.getType().isAssignableFrom(List.class)) {
                     Type type = ((ParameterizedType) declaredField.getGenericType()).getActualTypeArguments()[0];
                     Class<?> aClass = Class.forName(type.getTypeName());

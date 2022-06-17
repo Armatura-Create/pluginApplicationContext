@@ -12,8 +12,8 @@ public class PackageScanner {
 
         ConfigurationBuilder configurationBuilder = new ConfigurationBuilder()
                 .addUrls(ClasspathHelper.forPackage(packageName))
-                .addScanners(Scanners.SubTypes.filterResultsBy(s -> true))
-                .setExpandSuperTypes(false);
+                .addScanners(Scanners.SubTypes.filterResultsBy(s -> true));
+//                .setExpandSuperTypes(false);
 
         Reflections reflections = new Reflections(configurationBuilder);
 
